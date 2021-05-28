@@ -1,5 +1,5 @@
 FROM rust:1.51
-EXPOSE 4000
+EXPOSE 8080
 WORKDIR /usr/src/client
 COPY . .
 WORKDIR /usr/src/client/client
