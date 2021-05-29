@@ -1,5 +1,6 @@
 #![cfg(target_arch = "wasm32")]
 
+#[allow(unused_imports)]
 use rg3d::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -8,7 +9,14 @@ use rg3d::{
     engine::{resource_manager::ResourceManager, Engine},
     event::{DeviceEvent, ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    gui::node::StubNode,
+    monitor::VideoMode,
+    gui::{
+        message::{MessageDirection, TextMessage},
+        node::StubNode,
+        text::TextBuilder,
+        widget::WidgetBuilder,
+    },
+    dpi::LogicalPosition,
     physics::{dynamics::RigidBodyBuilder, geometry::ColliderBuilder},
     resource::texture::TextureWrapMode,
     scene::{
@@ -18,14 +26,29 @@ use rg3d::{
         transform::TransformBuilder,
         Scene,
     },
-    window::WindowBuilder,
+    window::{
+        WindowBuilder,
+        Fullscreen,
+    },
+    utils::translate_event,
 };
+
 use std::{
-    time,
     panic,
 };
 
+mod game_bits;
+
+//use game_bits::create_scene;
+
 use wasm_bindgen::prelude::*;
+
+type UiNode = rg3d::gui::node::UINode<(), StubNode>;
+type BuildContext<'a> = rg3d::gui::BuildContext<'a, (), StubNode>;
+
+fn create_ui(ctx: &mut BuildContext) -> Handle<UiNode> {
+    TextBuilder::new(WidgetBuilder::new()).build(ctx)
+}
 
 #[wasm_bindgen]
 extern "C" {
@@ -115,6 +138,11 @@ impl Game {
 pub fn main() {
     set_once();
 
+    let mut pointy = LogicalPosition {
+        x: 0.0,
+        y: 0.0
+    };
+
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");
     // Create event loop that will be used to "listen" events from the OS.
@@ -123,8 +151,16 @@ pub fn main() {
     // Finally create an instance of the engine.
     let mut engine = GameEngine::new(window_builder, &event_loop, true).unwrap();
 
+    let monitor = engine.get_window().current_monitor().unwrap();
+    //let video_mode = VideoMode {
+    //    size: (monitor.size().width, monitor.size().height),
+    //};
+    //engine.get_window().set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+
     // Initialize game instance. It is empty for now.
     let mut game = Game::new();
+
+    let debug_text = create_ui(&mut engine.user_interface.build_ctx());
 
     // Run the event loop of the main window. which will respond to OS and window events and update
     // engine's state accordingly. Engine lets you to decide which event should be handled,
@@ -146,8 +182,30 @@ pub fn main() {
                     // Run our game's logic.
                     game.update();
 
+                    let _fps = engine.renderer.get_statistics().frames_per_second;
+                    let text = format!(
+                        "Example - WASM\npointy: {}, {}",
+                        pointy.x, pointy.y
+                    );
+                    engine.user_interface.send_message(TextMessage::text(
+                        debug_text,
+                        MessageDirection::ToWidget,
+                        text,
+                    ));
+
                     // Update engine each frame.
                     engine.update(TIMESTEP);
+                }
+
+                // It is very important to "pump" messages from UI. Even if don't need to
+                // respond to such message, you should call this method, otherwise UI
+                // might behave very weird.
+                while let Some(_ui_event) = engine.user_interface.poll_message() {
+                    // ************************
+                    // Put your data model synchronization code here. It should
+                    // take message and update data in your game according to
+                    // changes in UI.
+                    // ************************
                 }
 
                 // Rendering must be explicitly requested and handled after RedrawRequested event is received.
@@ -157,22 +215,45 @@ pub fn main() {
                 // Render at max speed - it is not tied to the game code.
                 engine.render(TIMESTEP).unwrap();
             }
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                WindowEvent::KeyboardInput { input, .. } => {
-                    // Exit game by hitting Escape.
-                    if let Some(VirtualKeyCode::Escape) = input.virtual_keycode {
+            Event::DeviceEvent { event, .. } => {
+                match event {
+                    DeviceEvent::MouseMotion { delta } => {
+                        pointy.x += delta.0;
+                        pointy.y += delta.1;
+
+                        engine.get_window().set_cursor_position(LogicalPosition{ x: 100.0, y: 100.0});
+                    },
+                    _ => (),
+                }
+            }
+            Event::WindowEvent { event, .. } => {
+                match event {
+                    WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit
-                    }
+                    },
+                    WindowEvent::KeyboardInput { input, .. } => {
+                        // Exit game by hitting Escape.
+                        if let Some(VirtualKeyCode::Escape) = input.virtual_keycode {
+                            *control_flow = ControlFlow::Exit
+                        }
+                    },
+			        WindowEvent::Resized(size) => {
+                        // It is very important to handle Resized event from window, because
+                        // renderer knows nothing about window size - it must be notified
+                        // directly when window size has changed.
+                        engine.renderer.set_frame_size(size.into());
+                    },
+                    _ => (),
                 }
-			    WindowEvent::Resized(size) => {
-                    // It is very important to handle Resized event from window, because
-                    // renderer knows nothing about window size - it must be notified
-                    // directly when window size has changed.
-                    engine.renderer.set_frame_size(size.into());
+
+                // It is very important to "feed" user interface (UI) with events coming
+                // from main window, otherwise UI won't respond to mouse, keyboard, or any
+                // other event.
+                if let Some(os_event) = translate_event(&event) {
+                    engine.user_interface.process_os_event(&os_event);
                 }
-                _ => (),
-            },
+            }
+            
             _ => *control_flow = ControlFlow::Poll,
         }
     });
