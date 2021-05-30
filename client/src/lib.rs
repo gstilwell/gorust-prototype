@@ -39,8 +39,6 @@ use std::{
 
 mod game_bits;
 
-//use game_bits::create_scene;
-
 use wasm_bindgen::prelude::*;
 
 type UiNode = rg3d::gui::node::UINode<(), StubNode>;
@@ -49,6 +47,9 @@ type BuildContext<'a> = rg3d::gui::BuildContext<'a, (), StubNode>;
 fn create_ui(ctx: &mut BuildContext) -> Handle<UiNode> {
     TextBuilder::new(WidgetBuilder::new()).build(ctx)
 }
+
+#[link(wasm_import_module = "../src/js/game_mod.js")]
+extern {fn addClickForFullscreen(); }
 
 #[wasm_bindgen]
 extern "C" {
@@ -151,17 +152,14 @@ pub fn main() {
     // Finally create an instance of the engine.
     let mut engine = GameEngine::new(window_builder, &event_loop, true).unwrap();
 
-    let monitor = engine.get_window().current_monitor().unwrap();
-    //let video_mode = VideoMode {
-    //    size: (monitor.size().width, monitor.size().height),
-    //};
-    //engine.get_window().set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
-
     // Initialize game instance. It is empty for now.
     let mut game = Game::new();
 
     let debug_text = create_ui(&mut engine.user_interface.build_ctx());
 
+    unsafe {
+        addClickForFullscreen();
+    }
     // Run the event loop of the main window. which will respond to OS and window events and update
     // engine's state accordingly. Engine lets you to decide which event should be handled,
     // this is minimal working example if how it should be.
@@ -184,7 +182,8 @@ pub fn main() {
 
                     let _fps = engine.renderer.get_statistics().frames_per_second;
                     let text = format!(
-                        "Example - WASM\npointy: {}, {}",
+                        "Click for full screen\nscreen size: {}, {}\npointy: {}, {}",
+                        engine.get_window().inner_size().width, engine.get_window().inner_size().height,
                         pointy.x, pointy.y
                     );
                     engine.user_interface.send_message(TextMessage::text(
@@ -256,5 +255,6 @@ pub fn main() {
             
             _ => *control_flow = ControlFlow::Poll,
         }
+
     });
 }

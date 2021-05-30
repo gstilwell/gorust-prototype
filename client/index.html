@@ -3,12 +3,25 @@
   <head>
     <meta charset="utf-8">
     <title>WASM Test</title>
+
+    <style>
+      * {
+        margin: 0px
+      }
+
+      canvas {
+        display: block
+      }
+    </style>
   </head>
   <body>
-    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script type="module">
-		import init from './pkg/client.js'
-		init().then(w => w.main())
+
+		  import init from './pkg/client.js'
+		  init().then(w => {
+        w.main();
+      })
     </script>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
   </body>
 </html>
