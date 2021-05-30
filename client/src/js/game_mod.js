@@ -5,8 +5,14 @@ export function addClickForFullscreen() {
 
 function makeFullscreen() {
     let canvas = document.querySelector("canvas");
+    let cursorType = canvas.style.cursor;
     canvas.requestFullscreen().then(() => {
-      console.log("entered fullscreen");
+        canvas.addEventListener("fullscreenchange", () => {
+            if( !document.fullscreenElement ) {
+                document.exitPointerLock();
+                canvas.style.cursor = cursorType;
+            }
+        });
     });
     canvas.requestPointerLock();
     canvas.style.cursor = "none"; 
