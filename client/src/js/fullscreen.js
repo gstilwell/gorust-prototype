@@ -7,6 +7,9 @@ function makeFullscreen() {
     let canvas = document.querySelector("canvas");
     let cursorType = canvas.style.cursor;
     canvas.requestFullscreen().then(() => {
+        canvas.requestPointerLock();
+        canvas.style.cursor = "none"; 
+
         canvas.addEventListener("fullscreenchange", () => {
             if( !document.fullscreenElement ) {
                 document.exitPointerLock();
@@ -14,6 +17,4 @@ function makeFullscreen() {
             }
         });
     });
-    canvas.requestPointerLock();
-    canvas.style.cursor = "none"; 
 }

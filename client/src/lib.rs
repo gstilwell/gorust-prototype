@@ -16,7 +16,10 @@ use rg3d::{
         text::TextBuilder,
         widget::WidgetBuilder,
     },
-    dpi::LogicalPosition,
+    dpi::{
+        LogicalPosition,
+        LogicalSize,
+    },
     physics::{dynamics::RigidBodyBuilder, geometry::ColliderBuilder},
     resource::texture::TextureWrapMode,
     scene::{
@@ -48,7 +51,7 @@ fn create_ui(ctx: &mut BuildContext) -> Handle<UiNode> {
     TextBuilder::new(WidgetBuilder::new()).build(ctx)
 }
 
-#[link(wasm_import_module = "../src/js/game_mod.js")]
+#[link(wasm_import_module = "../src/js/fullscreen.js")]
 extern {fn addClickForFullscreen(); }
 
 #[wasm_bindgen]
@@ -135,13 +138,23 @@ impl Game {
     }
 }
 
+struct ScreenSize {
+    width: u32,
+    height: u32,
+}
+
 #[wasm_bindgen]
 pub fn main() {
     set_once();
 
     let mut pointy = LogicalPosition {
         x: 0.0,
-        y: 0.0
+        y: 0.0,
+    };
+
+    let mut screenSize = ScreenSize {
+        width: engine.get_window().inner_size().width,
+        height: engine.get_window().inner_size().height,
     };
 
     // Configure main window first.
@@ -183,7 +196,7 @@ pub fn main() {
                     let _fps = engine.renderer.get_statistics().frames_per_second;
                     let text = format!(
                         "Click for full screen\nscreen size: {}, {}\npointy: {}, {}",
-                        engine.get_window().inner_size().width, engine.get_window().inner_size().height,
+                        screenSize.width, screenSize.height,
                         pointy.x, pointy.y
                     );
                     engine.user_interface.send_message(TextMessage::text(
@@ -240,7 +253,9 @@ pub fn main() {
                         // It is very important to handle Resized event from window, because
                         // renderer knows nothing about window size - it must be notified
                         // directly when window size has changed.
-                        engine.renderer.set_frame_size(size.into());
+                        screenSize.width = engine.get_window().inner_size().width;
+                        screenSize.height = engine.get_window().inner_size().height;
+                        engine.renderer.set_frame_size((screenSize.width, screenSize.height));
                     },
                     _ => (),
                 }
