@@ -152,11 +152,6 @@ pub fn main() {
         y: 0.0,
     };
 
-    let mut screenSize = ScreenSize {
-        width: engine.get_window().inner_size().width,
-        height: engine.get_window().inner_size().height,
-    };
-
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");
     // Create event loop that will be used to "listen" events from the OS.
@@ -164,6 +159,11 @@ pub fn main() {
 
     // Finally create an instance of the engine.
     let mut engine = GameEngine::new(window_builder, &event_loop, true).unwrap();
+
+    let mut screenSize = ScreenSize {
+        width: engine.get_window().inner_size().width,
+        height: engine.get_window().inner_size().height,
+    };
 
     // Initialize game instance. It is empty for now.
     let mut game = Game::new();
