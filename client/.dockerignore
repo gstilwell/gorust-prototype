@@ -2,4 +2,4 @@
 /target
 .*ignore
 *.log
-Dockerfile
+Dockerfile*

@@ -1,0 +1,12 @@
+# generates a docker container with the dependencies for the client
+
+FROM gstilwell105/rust-wasm:rust-1.51
+WORKDIR /app
+RUN echo "fn main() {}" > dummy.rs
+COPY Cargo.toml .
+RUN apt-get update && apt-get install -y libasound2-dev
+RUN sed -i 's#"src/lib.rs"#"dummy.rs"#' Cargo.toml
+RUN cargo build --release
+RUN sed -i 's#"dummy.rs"#"src/lib.rs"#' Cargo.toml
+COPY . .
+RUN wasm-pack build --target web
