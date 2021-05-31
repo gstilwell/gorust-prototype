@@ -1,4 +1,6 @@
-#FROM gstilwell105/rust-wasm:rust-1.51
+# creates container that builds and hosts the gorust game client.
+# dependencies and tools are already loaded in upstream containers
+
 FROM gstilwell105/gorust-client-dependencies:latest
 EXPOSE 8080
 WORKDIR /app
