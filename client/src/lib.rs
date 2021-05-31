@@ -160,7 +160,7 @@ pub fn main() {
     // Finally create an instance of the engine.
     let mut engine = GameEngine::new(window_builder, &event_loop, true).unwrap();
 
-    let mut screenSize = ScreenSize {
+    let mut screen_size = ScreenSize {
         width: engine.get_window().inner_size().width,
         height: engine.get_window().inner_size().height,
     };
@@ -196,7 +196,7 @@ pub fn main() {
                     let _fps = engine.renderer.get_statistics().frames_per_second;
                     let text = format!(
                         "Click for full screen\nscreen size: {}, {}\npointy: {}, {}",
-                        screenSize.width, screenSize.height,
+                        screen_size.width, screen_size.height,
                         pointy.x, pointy.y
                     );
                     engine.user_interface.send_message(TextMessage::text(
@@ -232,8 +232,6 @@ pub fn main() {
                     DeviceEvent::MouseMotion { delta } => {
                         pointy.x += delta.0;
                         pointy.y += delta.1;
-
-                        engine.get_window().set_cursor_position(LogicalPosition{ x: 100.0, y: 100.0});
                     },
                     _ => (),
                 }
@@ -253,9 +251,9 @@ pub fn main() {
                         // It is very important to handle Resized event from window, because
                         // renderer knows nothing about window size - it must be notified
                         // directly when window size has changed.
-                        screenSize.width = engine.get_window().inner_size().width;
-                        screenSize.height = engine.get_window().inner_size().height;
-                        engine.renderer.set_frame_size((screenSize.width, screenSize.height));
+                        screen_size.width = size.width;
+                        screen_size.height = size.height;
+                        engine.renderer.set_frame_size((screen_size.width, screen_size.height));
                     },
                     _ => (),
                 }
