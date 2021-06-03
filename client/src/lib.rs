@@ -9,10 +9,14 @@ use rg3d::{
         futures,
         wasm_bindgen::{self, prelude::*},
     },
-    engine::{resource_manager::ResourceManager, Engine},
+    engine::{
+        Engine,
+        resource_manager::{ResourceManager, TextureImportOptions},
+    },
     event::{DeviceEvent, ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     monitor::VideoMode,
+    resource::texture::{CompressionOptions, TextureWrapMode},
     gui::{
         message::{MessageDirection, TextMessage},
         node::StubNode,
@@ -24,7 +28,6 @@ use rg3d::{
         LogicalSize,
     },
     physics::{dynamics::RigidBodyBuilder, geometry::ColliderBuilder},
-    resource::texture::TextureWrapMode,
     scene::{
         graph::Graph,
         light::{BaseLightBuilder, PointLightBuilder},
@@ -263,7 +266,7 @@ async fn create_scene(resource_manager: ResourceManager, context: Arc<Mutex<Scen
             25.0, 0.25, 25.0,
         ))),
     )))
-    .with_diffuse_texture(resource_manager.request_texture("assets/textures/concrete.jpg"))
+    .with_diffuse_texture(resource_manager.request_texture("assets/textures/floor.jpg"))
     .build()])
     .build(&mut scene.graph);
 
@@ -329,6 +332,16 @@ pub fn main() {
 
     // Finally create an instance of the engine.
     let mut engine = GameEngine::new(window_builder, &event_loop, true).unwrap();
+    engine.renderer.set_backbuffer_clear_color(Color::opaque(150, 150, 255));
+
+    // Configure resource manager.
+    engine.resource_manager.state().set_textures_import_options(
+        TextureImportOptions::default().with_compression(CompressionOptions::NoCompression),
+    );
+    engine
+        .resource_manager
+        .state()
+        .set_textures_path("assets/textures");
 
     let mut screen_size = ScreenSize {
         width: engine.get_window().inner_size().width,
