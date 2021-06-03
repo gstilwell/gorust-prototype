@@ -3,8 +3,11 @@
 #[allow(unused_imports)]
 use rg3d::{
     core::{
-        algebra::{UnitQuaternion, Vector3},
+        algebra::{Matrix4, UnitQuaternion, Vector3},
         pool::Handle,
+        color::Color,
+        futures,
+        wasm_bindgen::{self, prelude::*},
     },
     engine::{resource_manager::ResourceManager, Engine},
     event::{DeviceEvent, ElementState, Event, VirtualKeyCode, WindowEvent},
@@ -23,11 +26,17 @@ use rg3d::{
     physics::{dynamics::RigidBodyBuilder, geometry::ColliderBuilder},
     resource::texture::TextureWrapMode,
     scene::{
+        graph::Graph,
+        light::{BaseLightBuilder, PointLightBuilder},
         base::BaseBuilder,
-        camera::{CameraBuilder, SkyBox},
+        camera::{Camera, CameraBuilder, SkyBox},
         node::Node,
         transform::TransformBuilder,
         Scene,
+        mesh::{
+            surface::{SurfaceBuilder, SurfaceData},
+            MeshBuilder,
+        },
     },
     window::{
         WindowBuilder,
@@ -38,11 +47,12 @@ use rg3d::{
 
 use std::{
     panic,
+    sync::{Arc, Mutex, RwLock},
 };
 
 mod game_bits;
 
-use wasm_bindgen::prelude::*;
+//use wasm_bindgen::prelude::*;
 
 type UiNode = rg3d::gui::node::UINode<(), StubNode>;
 type BuildContext<'a> = rg3d::gui::BuildContext<'a, (), StubNode>;
@@ -124,19 +134,179 @@ type GameEngine = Engine<(), StubNode>;
 // Our game logic will be updated at 60 Hz rate.
 const TIMESTEP: f32 = 1.0 / 60.0;
 
-struct Game {
-    // Empty for now.
+struct GameScene {
+    scene: Scene,
 }
 
-impl Game {
-    pub fn new() -> Self {
-        Self {}
+struct SceneContext {
+    data: Option<GameScene>,
+}
+
+/// Creates a camera at given position with a skybox.
+pub async fn create_camera(
+    resource_manager: ResourceManager,
+    position: Vector3<f32>,
+    graph: &mut Graph,
+) -> Handle<Node> {
+    // Load skybox textures in parallel.
+    let (front, back, left, right, top, bottom) = rg3d::core::futures::join!(
+        resource_manager.request_texture("assets/textures/DarkStormyFront.jpg"),
+        resource_manager.request_texture("assets/textures/DarkStormyBack.jpg"),
+        resource_manager.request_texture("assets/textures/DarkStormyLeft.jpg"),
+        resource_manager.request_texture("assets/textures/DarkStormyRight.jpg"),
+        resource_manager.request_texture("assets/textures/DarkStormyUp.jpg"),
+        resource_manager.request_texture("assets/textures/DarkStormyDown.jpg")
+    );
+
+    // Unwrap everything.
+    let skybox = SkyBox {
+        front: Some(front.unwrap()),
+        back: Some(back.unwrap()),
+        left: Some(left.unwrap()),
+        right: Some(right.unwrap()),
+        top: Some(top.unwrap()),
+        bottom: Some(bottom.unwrap()),
+    };
+
+    // Set S and T coordinate wrap mode, ClampToEdge will remove any possible seams on edges
+    // of the skybox.
+    for skybox_texture in skybox.textures().iter().filter_map(|t| t.clone()) {
+        let mut data = skybox_texture.data_ref();
+        data.set_s_wrap_mode(TextureWrapMode::ClampToEdge);
+        data.set_t_wrap_mode(TextureWrapMode::ClampToEdge);
     }
 
-    pub fn update(&mut self) {
-        // Game logic will be placed here.
-    }
+    // Camera is our eyes in the world - you won't see anything without it.
+    CameraBuilder::new(
+        BaseBuilder::new().with_local_transform(
+            TransformBuilder::new()
+                .with_local_position(position)
+                .build(),
+        ),
+    )
+    .with_skybox(skybox)
+    .build(graph)
 }
+
+async fn create_scene(resource_manager: ResourceManager, context: Arc<Mutex<SceneContext>>) {
+    let mut scene = Scene::new();
+
+    //let music = GenericSourceBuilder::new(
+    //    resource_manager
+    //        .request_sound_buffer("data/music.ogg", false)
+    //        .await
+    //        .unwrap()
+    //        .into(),
+    //)
+    //.with_status(Status::Playing)
+    //.build_source()
+    //.unwrap();
+    //
+    //scene.sound_context.state().add_source(music);
+
+    scene.ambient_lighting_color = Color::opaque(200, 200, 200);
+
+    create_camera(
+        resource_manager.clone(),
+        Vector3::new(0.0, 6.0, -12.0),
+        &mut scene.graph,
+    )
+    .await;
+
+    PointLightBuilder::new(BaseLightBuilder::new(
+        BaseBuilder::new().with_local_transform(
+            TransformBuilder::new()
+                .with_local_position(Vector3::new(0.0, 12.0, 0.0))
+                .build(),
+        ),
+    ))
+    .with_radius(20.0)
+    .build(&mut scene.graph);
+
+    //let (model_resource, walk_animation_resource) = rg3d::core::futures::join!(
+    //    resource_manager.request_model("data/mutant.FBX"),
+    //    resource_manager.request_model("data/walk.fbx")
+    //);
+
+    //// Instantiate model on scene - but only geometry, without any animations.
+    //// Instantiation is a process of embedding model resource data in desired scene.
+    //let model = model_resource.unwrap().instantiate_geometry(&mut scene);
+
+    //// Now we have whole sub-graph instantiated, we can start modifying model instance.
+    //scene.graph[model]
+    //    .local_transform_mut()
+    //    // Our model is too big, fix it by scale.
+    //    .set_scale(Vector3::new(0.05, 0.05, 0.05));
+
+    //// Add simple animation for our model. Animations are loaded from model resources -
+    //// this is because animation is a set of skeleton bones with their own transforms.
+    //// Once animation resource is loaded it must be re-targeted to our model instance.
+    //// Why? Because animation in *resource* uses information about *resource* bones,
+    //// not model instance bones, retarget_animations maps animations of each bone on
+    //// model instance so animation will know about nodes it should operate on.
+    //let walk_animation = *walk_animation_resource
+    //    .unwrap()
+    //    .retarget_animations(model, &mut scene)
+    //    .get(0)
+    //    .unwrap();
+
+    // Add floor.
+    MeshBuilder::new(
+        BaseBuilder::new().with_local_transform(
+            TransformBuilder::new()
+                .with_local_position(Vector3::new(0.0, -0.25, 0.0))
+                .build(),
+        ),
+    )
+    .with_surfaces(vec![SurfaceBuilder::new(Arc::new(RwLock::new(
+        SurfaceData::make_cube(Matrix4::new_nonuniform_scaling(&Vector3::new(
+            25.0, 0.25, 25.0,
+        ))),
+    )))
+    .with_diffuse_texture(resource_manager.request_texture("assets/textures/concrete.jpg"))
+    .build()])
+    .build(&mut scene.graph);
+
+    context.lock().unwrap().data = Some(GameScene {
+        scene,
+    })
+}
+
+
+//impl Game {
+//    pub async fn new(engine: &mut GameEngine) -> Self {
+//        let mut scene = Scene::new();
+//
+//        // Load a scene resource and create its instance.
+//        //rg3d::core::wasm_bindgen_futures::spawn_local(
+//        //    engine.resource_manager.request_model("assets/models/my_favorite_scene.rgs")
+//        //);
+//                //.await
+//                //.unwrap()
+//                //.instantiate_geometry(&mut scene);
+//
+//        //// Next create a camera, it is our "eyes" in the world.
+//        //// This can also be made in editor, but for educational purpose we'll made it by hand.
+//        //let camera = CameraBuilder::new(
+//        //    BaseBuilder::new().with_local_transform(
+//        //        TransformBuilder::new()
+//        //            .with_local_position(Vector3::new(0.0, 1.0, -3.0))
+//        //            .build(),
+//        //    ),
+//        //)
+//        //.build(&mut scene.graph);
+//
+//        //Self {
+//        //    camera: camera,
+//        //    scene: engine.scenes.add(scene),
+//        //}
+//        Self {}
+//    }
+//
+//    pub fn update(&mut self) {
+//        // Game logic will be placed here.
+//    }
+//}
 
 struct ScreenSize {
     width: u32,
@@ -166,7 +336,11 @@ pub fn main() {
     };
 
     // Initialize game instance. It is empty for now.
-    let mut game = Game::new();
+    //let mut game = futures::executor::block_on(Game::new(&mut engine));
+    let load_context = Arc::new(Mutex::new(SceneContext { data: None }));
+    rg3d::core::wasm_bindgen_futures::spawn_local(create_scene(engine.resource_manager.clone(), load_context.clone()));
+
+    let mut scene_handle = Handle::NONE;
 
     let debug_text = create_ui(&mut engine.user_interface.build_ctx());
 
@@ -191,7 +365,14 @@ pub fn main() {
                     elapsed_time += TIMESTEP;
 
                     // Run our game's logic.
-                    game.update();
+                    //game.update();
+                    if let Some(scene) = load_context.lock().unwrap().data.take() {
+                        scene_handle = engine.scenes.add(scene.scene);
+                    }
+
+                    if scene_handle.is_some() {
+                        let scene = &mut engine.scenes[scene_handle];
+                    }
 
                     let _fps = engine.renderer.get_statistics().frames_per_second;
                     let text = format!(

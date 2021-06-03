@@ -10,4 +10,5 @@ path = "src/lib.rs"
 
 [dependencies]
 wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1.6"
 rg3d = { git = "https://github.com/rg3dengine/rg3d", rev = "7a044a3fb429b8c56052399671e8dcfde6498efd" }
