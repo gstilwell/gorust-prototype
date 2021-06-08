@@ -32,11 +32,11 @@ pub fn start() -> Result<WebSocket, JsValue> {
             console_log!("Arraybuffer received {}bytes: {:?}", len, array.to_vec());
             // here you can for example use Serde Deserialize decode the message
             // for demo purposes we switch back to Blob-type and send off another binary message
-            cloned_ws.set_binary_type(web_sys::BinaryType::Blob);
-            match cloned_ws.send_with_u8_array(&vec![5, 6, 7, 8]) {
-                Ok(_) => console_log!("binary message successfully sent"),
-                Err(err) => console_log!("error sending message: {:?}", err),
-            }
+            //cloned_ws.set_binary_type(web_sys::BinaryType::Blob);
+            //match cloned_ws.send_with_u8_array(&vec![5, 6, 7, 8]) {
+            //    Ok(_) => console_log!("binary message successfully sent"),
+            //    Err(err) => console_log!("error sending message: {:?}", err),
+            //}
         } else if let Ok(blob) = e.data().dyn_into::<web_sys::Blob>() {
             console_log!("message event, received blob: {:?}", blob);
             // better alternative to juggling with FileReader is to use https://crates.io/crates/gloo-file
@@ -73,15 +73,15 @@ pub fn start() -> Result<WebSocket, JsValue> {
     let cloned_ws = ws.clone();
     let onopen_callback = Closure::wrap(Box::new(move |_| {
         console_log!("socket opened");
-        match cloned_ws.send_with_str("ping") {
-            Ok(_) => console_log!("message successfully sent"),
-            Err(err) => console_log!("error sending message: {:?}", err),
-        }
+        //match cloned_ws.send_with_str("ping") {
+        //    Ok(_) => console_log!("message successfully sent"),
+        //    Err(err) => console_log!("error sending message: {:?}", err),
+        //}
         // send off binary message
-        match cloned_ws.send_with_u8_array(&vec![0, 1, 2, 3]) {
-            Ok(_) => console_log!("binary message successfully sent"),
-            Err(err) => console_log!("error sending message: {:?}", err),
-        }
+        //match cloned_ws.send_with_u8_array(&vec![0, 1, 2, 3]) {
+        //    Ok(_) => console_log!("binary message successfully sent"),
+        //    Err(err) => console_log!("error sending message: {:?}", err),
+        //}
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
     onopen_callback.forget();

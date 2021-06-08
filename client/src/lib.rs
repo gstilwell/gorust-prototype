@@ -53,6 +53,8 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
+use serde_json::json;
+
 mod game_bits;
 
 //use wasm_bindgen::prelude::*;
@@ -429,12 +431,16 @@ pub fn main() {
                         pointy.x += delta.0;
                         pointy.y += delta.1;
 
-                        ws.send_with_str("thac0s");
-                        //let blob = match web_sys::Blob::new_with_blob_sequence(&wasm_bindgen::JsValue::from_f64(-1.0)) {
-                        //    Ok(b) => ws.send_with_blob(&b),
-                        //    // TODO need to actually handle the error
-                        //    Err(_) => Ok(()),
-                        //};
+                        let cursor = json!({
+                            "messageType": "cursorPosition",
+                            "x": pointy.x,
+                            "y": pointy.y
+                        });
+                        match ws.send_with_str(&cursor.to_string()) {
+                            Ok(_) => {},
+                            //TODO do something with error
+                            Err(err) => {}
+                        }
                     },
                     _ => (),
                 }

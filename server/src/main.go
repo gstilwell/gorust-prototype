@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -15,6 +15,12 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type wsMessage struct {
+	MessageType string
+	X float64
+	Y float64
+}
+
 func websocketConnect(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -23,14 +29,22 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 	for {
-		mt, message, err := c.ReadMessage()
+		_, message, err := c.ReadMessage()
 		if err != nil {
 			log.Println("read error:", err)
 			break
 		}
-		fmt.Println(message)
-		log.Printf("receive: %s", message)
-		err = c.WriteMessage(mt, []byte("tacos"))
+
+		var m wsMessage
+		err = json.Unmarshal(message, &m)
+		if err != nil {
+			log.Println("Unmarshal error:", err)
+			break
+		}
+		switch m.MessageType {
+		case "cursorPosition":
+			log.Printf("%f, %f", m.X, m.Y)
+		}
 		if err != nil {
 			log.Println("write error:", err)
 			break
