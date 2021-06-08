@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -27,6 +28,7 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 			log.Println("read error:", err)
 			break
 		}
+		fmt.Println(message)
 		log.Printf("receive: %s", message)
 		err = c.WriteMessage(mt, []byte("tacos"))
 		if err != nil {

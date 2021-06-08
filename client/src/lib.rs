@@ -325,7 +325,7 @@ pub fn main() {
         y: 0.0,
     };
 
-    let ws = game_bits::websocket::start();
+    let ws = game_bits::websocket::start().unwrap();
 
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");
@@ -428,6 +428,13 @@ pub fn main() {
                     DeviceEvent::MouseMotion { delta } => {
                         pointy.x += delta.0;
                         pointy.y += delta.1;
+
+                        ws.send_with_str("thac0s");
+                        //let blob = match web_sys::Blob::new_with_blob_sequence(&wasm_bindgen::JsValue::from_f64(-1.0)) {
+                        //    Ok(b) => ws.send_with_blob(&b),
+                        //    // TODO need to actually handle the error
+                        //    Err(_) => Ok(()),
+                        //};
                     },
                     _ => (),
                 }

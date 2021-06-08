@@ -14,8 +14,9 @@ extern "C" {
     fn log(s: &str);
 }
 
-#[wasm_bindgen(start)]
-pub fn start() -> Result<(), JsValue> {
+//#[wasm_bindgen(start)]
+#[wasm_bindgen]
+pub fn start() -> Result<WebSocket, JsValue> {
     // Connect to an echo server
     let ws = WebSocket::new("ws://localhost:5000/websocket")?;
     // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
@@ -85,5 +86,5 @@ pub fn start() -> Result<(), JsValue> {
     ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
     onopen_callback.forget();
 
-    Ok(())
+    Ok(ws.clone())
 }
