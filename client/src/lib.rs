@@ -325,6 +325,8 @@ pub fn main() {
         y: 0.0,
     };
 
+    let ws = game_bits::websocket::start();
+
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");
     // Create event loop that will be used to "listen" events from the OS.
