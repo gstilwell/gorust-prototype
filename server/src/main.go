@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,6 +15,16 @@ var upgrader = websocket.Upgrader{
 		origin := r.Header.Get("Origin")
 		return origin == "http://localhost:4000"
 	},
+}
+
+type WelcomeMessage struct {
+	MessageType string
+	ClientId uint32
+}
+
+func (m *WelcomeMessage) create(clientId uint32) {
+	m.MessageType = "welcome"
+	m.ClientId = clientId
 }
 
 type wsMessage struct {
@@ -47,7 +59,17 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 		case "cursorPosition":
 			log.Printf("%f, %f", m.X, m.Y)
 		case "salutations":
-			log.Printf("hello, %d", m.Id)
+			rand.Seed(time.Now().UnixNano())
+			clientId := rand.Uint32()
+			log.Printf("hello, %d", clientId)
+
+			response := WelcomeMessage{}
+			response.create(clientId)
+			jsonResponse, err := json.Marshal(&response)
+			if err != nil {
+				log.Println("welcome error:", err)
+			}
+			w.Write(jsonResponse)
 		}
 
 		if err != nil {

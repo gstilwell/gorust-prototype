@@ -4,7 +4,6 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 use serde_json::json;
-use rg3d::core::rand::{thread_rng, Rng};
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
@@ -72,16 +71,12 @@ pub fn start() -> Result<WebSocket, JsValue> {
     ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
     onerror_callback.forget();
 
-    let mut rng = thread_rng();
-    let client_id: u32 = rng.gen();
-
     let cloned_ws = ws.clone();
     let onopen_callback = Closure::wrap(Box::new(move |_| {
         console_log!("socket opened");
 
         let cursor = json!({
             "messageType": "salutations",
-            "id": client_id,
         });
         match cloned_ws.send_with_str(&cursor.to_string()) {
             Ok(_) => {},
