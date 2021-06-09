@@ -19,6 +19,7 @@ type wsMessage struct {
 	MessageType string
 	X float64
 	Y float64
+	Id uint32
 }
 
 func websocketConnect(w http.ResponseWriter, r *http.Request) {
@@ -41,10 +42,14 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 			log.Println("Unmarshal error:", err)
 			break
 		}
+
 		switch m.MessageType {
 		case "cursorPosition":
 			log.Printf("%f, %f", m.X, m.Y)
+		case "salutations":
+			log.Printf("hello, %d", m.Id)
 		}
+
 		if err != nil {
 			log.Println("write error:", err)
 			break
