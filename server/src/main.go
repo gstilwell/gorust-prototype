@@ -31,7 +31,7 @@ type wsMessage struct {
 	MessageType string
 	X float64
 	Y float64
-	Id uint32
+	ClientId uint32
 }
 
 func websocketConnect(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +55,7 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		log.Printf("%s", m.MessageType)
 		switch m.MessageType {
 		case "cursorPosition":
 			log.Printf("%f, %f", m.X, m.Y)
@@ -65,11 +66,15 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 
 			response := WelcomeMessage{}
 			response.create(clientId)
-			jsonResponse, err := json.Marshal(&response)
+			//jsonResponse, err := json.Marshal(&response)
 			if err != nil {
 				log.Println("welcome error:", err)
 			}
-			w.Write(jsonResponse)
+			c.WriteJSON(response)
+		case "ack":
+			log.Printf("got ack from %d", m.ClientId)
+		default:
+			log.Printf("got unknown message %s", m.MessageType)
 		}
 
 		if err != nil {

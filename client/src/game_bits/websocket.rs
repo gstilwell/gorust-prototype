@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 use serde_json::json;
+use serde::{Serialize, Deserialize};
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
@@ -15,6 +16,17 @@ extern "C" {
     fn log(s: &str);
 }
 
+#[derive(Serialize, Deserialize)]
+struct IncomingMessage {
+    MessageType: String,
+    ClientId: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+struct WelcomeMessage {
+    ClientId: u32,
+}
+
 //#[wasm_bindgen(start)]
 #[wasm_bindgen]
 pub fn start() -> Result<WebSocket, JsValue> {
@@ -22,8 +34,9 @@ pub fn start() -> Result<WebSocket, JsValue> {
     let ws = WebSocket::new("ws://localhost:5000/websocket")?;
     // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
     ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
-    // create callback
+    let mut client_id: u32 = 0;
     let cloned_ws = ws.clone();
+    // create callback
     let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
         // Handle difference Text/Binary,...
         if let Ok(abuf) = e.data().dyn_into::<js_sys::ArrayBuffer>() {
@@ -31,13 +44,8 @@ pub fn start() -> Result<WebSocket, JsValue> {
             let array = js_sys::Uint8Array::new(&abuf);
             let len = array.byte_length() as usize;
             console_log!("Arraybuffer received {}bytes: {:?}", len, array.to_vec());
-            // here you can for example use Serde Deserialize decode the message
-            // for demo purposes we switch back to Blob-type and send off another binary message
-            //cloned_ws.set_binary_type(web_sys::BinaryType::Blob);
-            //match cloned_ws.send_with_u8_array(&vec![5, 6, 7, 8]) {
-            //    Ok(_) => console_log!("binary message successfully sent"),
-            //    Err(err) => console_log!("error sending message: {:?}", err),
-            //}
+
+
         } else if let Ok(blob) = e.data().dyn_into::<web_sys::Blob>() {
             console_log!("message event, received blob: {:?}", blob);
             // better alternative to juggling with FileReader is to use https://crates.io/crates/gloo-file
@@ -56,6 +64,25 @@ pub fn start() -> Result<WebSocket, JsValue> {
             onloadend_cb.forget();
         } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
             console_log!("message event, received Text: {:?}", txt);
+            
+            let txt_as_string: String = txt.into();
+            let payload: IncomingMessage = serde_json::from_str(&txt_as_string).unwrap();
+
+            if payload.MessageType == "welcome" {
+                //let payload: WelcomeMessage = serde_json::from_str(&txt_as_string).unwrap();
+                console_log!("welcome received! we are id {}", payload.ClientId);
+                client_id = payload.ClientId;
+
+                let ack = json!({
+                    "messageType": "ack",
+                    "clientId": client_id,
+                });
+                match cloned_ws.send_with_str(&ack.to_string()) {
+                    Ok(_) => {},
+                    //TODO do something with error
+                    Err(err) => {}
+                }
+            }
         } else {
             console_log!("message event, received Unknown: {:?}", e.data());
         }
@@ -71,14 +98,14 @@ pub fn start() -> Result<WebSocket, JsValue> {
     ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
     onerror_callback.forget();
 
-    let cloned_ws = ws.clone();
+    let another_cloned_ws = ws.clone();
     let onopen_callback = Closure::wrap(Box::new(move |_| {
         console_log!("socket opened");
 
         let cursor = json!({
             "messageType": "salutations",
         });
-        match cloned_ws.send_with_str(&cursor.to_string()) {
+        match another_cloned_ws.send_with_str(&cursor.to_string()) {
             Ok(_) => {},
             //TODO do something with error
             Err(err) => {}
