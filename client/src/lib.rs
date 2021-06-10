@@ -328,7 +328,7 @@ pub fn main() {
         y: 0.0,
     };
 
-    let mut ws = game_bits::websocket::Websocket{ ws: None };
+    let mut ws = game_bits::websocket::Websocket{ ws: None, client_id: 0 };
     ws.start();
 
     // Configure main window first.
@@ -434,13 +434,15 @@ pub fn main() {
                         pointy.y += delta.1;
 
                         #[derive(Serialize, Deserialize)]
-                        struct payload<'a>{
+                        struct Payload<'a>{
                             messageType: &'a str,
+                            clientId: u32,
                             x: f64,
                             y: f64,
                         };
-                        ws.send_message(payload{
+                        ws.send_message(Payload{
                             messageType: "cursorPosition",
+                            clientId: ws.client_id,
                             x: pointy.x,
                             y: pointy.y,
                         });

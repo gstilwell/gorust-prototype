@@ -30,6 +30,7 @@ struct WelcomeMessage {
 #[derive(Default)]
 pub struct Websocket {
     pub ws: Option<WebSocket>,
+    pub client_id: u32,
 }
 
 impl Websocket {
@@ -39,8 +40,23 @@ impl Websocket {
 pub fn send_message<T>(&self, payload: T)
 where
     T: Serialize
-{
+{   
+    //// compile error on trying to put this T in the struct definition:
+    //// "can't use generic parameters from outside function"
+    ////
+    //// TODO: figure out another way to do this
+    //#[derive(Serialize, Deserialize)]
+    //struct Payload {
+    //    payload: T,
+    //    client_id: u32,
+    //};
+
+    //let payload = Payload{
+    //    payload: payload,
+    //    client_id: self.client_id,
+    //};
     let payload = json!(payload);
+
     match self.ws.as_ref().unwrap().send_with_str(&payload.to_string()) {
         Ok(_) => {}
         //TODO do something with error
@@ -132,5 +148,7 @@ pub fn start(&mut self) {
     }) as Box<dyn FnMut(JsValue)>);
     self.ws.as_ref().unwrap().set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
     onopen_callback.forget();
+
+    self.client_id = client_id;
 }
 }

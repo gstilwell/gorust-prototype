@@ -58,7 +58,7 @@ func websocketConnect(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s", m.MessageType)
 		switch m.MessageType {
 		case "cursorPosition":
-			log.Printf("%f, %f", m.X, m.Y)
+			log.Printf("id: %d -- %f, %f", m.ClientId, m.X, m.Y)
 		case "salutations":
 			rand.Seed(time.Now().UnixNano())
 			clientId := rand.Uint32()
