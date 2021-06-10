@@ -54,6 +54,7 @@ use std::{
 };
 
 use serde_json::json;
+use serde::{Serialize, Deserialize};
 
 mod game_bits;
 
@@ -327,7 +328,8 @@ pub fn main() {
         y: 0.0,
     };
 
-    let ws = game_bits::websocket::start().unwrap();
+    let mut ws = game_bits::websocket::Websocket{ ws: None };
+    ws.start();
 
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");
@@ -431,16 +433,17 @@ pub fn main() {
                         pointy.x += delta.0;
                         pointy.y += delta.1;
 
-                        let cursor = json!({
-                            "messageType": "cursorPosition",
-                            "x": pointy.x,
-                            "y": pointy.y
+                        #[derive(Serialize, Deserialize)]
+                        struct payload<'a>{
+                            messageType: &'a str,
+                            x: f64,
+                            y: f64,
+                        };
+                        ws.send_message(payload{
+                            messageType: "cursorPosition",
+                            x: pointy.x,
+                            y: pointy.y,
                         });
-                        match ws.send_with_str(&cursor.to_string()) {
-                            Ok(_) => {},
-                            //TODO do something with error
-                            Err(err) => {}
-                        }
                     },
                     _ => (),
                 }

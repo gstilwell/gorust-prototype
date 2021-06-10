@@ -27,15 +27,34 @@ struct WelcomeMessage {
     ClientId: u32,
 }
 
+#[derive(Default)]
+pub struct Websocket {
+    pub ws: Option<WebSocket>,
+}
+
+impl Websocket {
 //#[wasm_bindgen(start)]
-#[wasm_bindgen]
-pub fn start() -> Result<WebSocket, JsValue> {
+//#[wasm_bindgen]
+
+pub fn send_message<T>(&self, payload: T)
+where
+    T: Serialize
+{
+    let payload = json!(payload);
+    match self.ws.as_ref().unwrap().send_with_str(&payload.to_string()) {
+        Ok(_) => {}
+        //TODO do something with error
+        Err(err) => {}
+    }
+}
+
+pub fn start(&mut self) {
     // Connect to an echo server
-    let ws = WebSocket::new("ws://localhost:5000/websocket")?;
+    self.ws = Some(WebSocket::new("ws://localhost:5000/websocket").unwrap());
     // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
-    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+    self.ws.as_ref().unwrap().set_binary_type(web_sys::BinaryType::Arraybuffer);
     let mut client_id: u32 = 0;
-    let cloned_ws = ws.clone();
+    let cloned_ws = self.ws.as_ref().unwrap().clone();
     // create callback
     let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
         // Handle difference Text/Binary,...
@@ -88,41 +107,30 @@ pub fn start() -> Result<WebSocket, JsValue> {
         }
     }) as Box<dyn FnMut(MessageEvent)>);
     // set message event handler on WebSocket
-    ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    self.ws.as_ref().unwrap().set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     // forget the callback to keep it alive
     onmessage_callback.forget();
 
     let onerror_callback = Closure::wrap(Box::new(move |e: ErrorEvent| {
         console_log!("error event: {:?}", e);
     }) as Box<dyn FnMut(ErrorEvent)>);
-    ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
+    self.ws.as_ref().unwrap().set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
     onerror_callback.forget();
 
-    let another_cloned_ws = ws.clone();
+    let another_cloned_ws = self.ws.as_ref().unwrap().clone();
     let onopen_callback = Closure::wrap(Box::new(move |_| {
         console_log!("socket opened");
 
-        let cursor = json!({
+        let hello = json!({
             "messageType": "salutations",
         });
-        match another_cloned_ws.send_with_str(&cursor.to_string()) {
+        match another_cloned_ws.send_with_str(&hello.to_string()) {
             Ok(_) => {},
             //TODO do something with error
             Err(err) => {}
         }
-
-        //match cloned_ws.send_with_str("ping") {
-        //    Ok(_) => console_log!("message successfully sent"),
-        //    Err(err) => console_log!("error sending message: {:?}", err),
-        //}
-        // send off binary message
-        //match cloned_ws.send_with_u8_array(&vec![0, 1, 2, 3]) {
-        //    Ok(_) => console_log!("binary message successfully sent"),
-        //    Err(err) => console_log!("error sending message: {:?}", err),
-        //}
     }) as Box<dyn FnMut(JsValue)>);
-    ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
+    self.ws.as_ref().unwrap().set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
     onopen_callback.forget();
-
-    Ok(ws)
+}
 }
