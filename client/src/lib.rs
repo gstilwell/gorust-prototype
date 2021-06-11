@@ -55,6 +55,8 @@ use std::{
 
 use serde_json::json;
 use serde::{Serialize, Deserialize};
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
 
 mod game_bits;
 
@@ -328,8 +330,8 @@ pub fn main() {
         y: 0.0,
     };
 
-    let mut ws = game_bits::websocket::Websocket{ ws: None, client_id: 0 };
-    ws.start();
+    let (tx, rx): (Sender<u32>, Receiver<u32>) = mpsc::channel();
+    let ws = game_bits::websocket::Websocket::new(tx);
 
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");

@@ -5,6 +5,8 @@ use wasm_bindgen::JsCast;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 use serde_json::json;
 use serde::{Serialize, Deserialize};
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
@@ -37,6 +39,15 @@ impl Websocket {
 //#[wasm_bindgen(start)]
 //#[wasm_bindgen]
 
+pub fn new(tx: Sender<u32>) -> Websocket {
+    let mut ws = Websocket {
+        ws: None,
+        client_id: 0,
+    };
+    ws.start(tx);
+    ws
+}
+
 pub fn send_message<T>(&self, payload: T)
 where
     T: Serialize
@@ -64,7 +75,7 @@ where
     }
 }
 
-pub fn start(&mut self) {
+pub fn start(&mut self, _tx: Sender<u32>) {
     // Connect to an echo server
     self.ws = Some(WebSocket::new("ws://localhost:5000/websocket").unwrap());
     // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
