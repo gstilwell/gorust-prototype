@@ -69,7 +69,7 @@ fn create_ui(ctx: &mut BuildContext) -> Handle<UiNode> {
     TextBuilder::new(WidgetBuilder::new()).build(ctx)
 }
 
-#[link(wasm_import_module = "../src/js/fullscreen.js")]
+#[wasm_bindgen(module = "/src/js/fullscreen.js")]
 extern {fn addClickForFullscreen(); }
 
 #[wasm_bindgen]
@@ -330,8 +330,8 @@ pub fn main() {
         y: 0.0,
     };
 
-    let (tx, rx): (Sender<u32>, Receiver<u32>) = mpsc::channel();
-    let ws = game_bits::websocket::Websocket::new(tx);
+    let ws = game_bits::websocket::Websocket::new();
+    game_bits::js_channel::send("snac0".to_string());
 
     // Configure main window first.
     let window_builder = WindowBuilder::new().with_title("Gorust!");
@@ -441,7 +441,7 @@ pub fn main() {
                             clientId: u32,
                             x: f64,
                             y: f64,
-                        };
+                        }
                         ws.send_message(Payload{
                             messageType: "cursorPosition",
                             clientId: ws.client_id,
